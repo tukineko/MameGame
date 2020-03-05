@@ -64,6 +64,9 @@ public:
         return _state == State::STATIC;
     }
 
+    //スコア点数を返します
+    int getMameScore();
+
     CC_SYNTHESIZE(State, _state, State);
     CC_SYNTHESIZE_READONLY_PASS_BY_REF(Vec2, _mamePosition, MamePosition);
     CC_SYNTHESIZE_READONLY(mameType, _mameType, MameType);

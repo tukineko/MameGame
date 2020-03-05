@@ -16,7 +16,9 @@ protected:
         FLOOR,
         MAME,
         HITEREA,
+        COMBO,
         BTN,
+        SCORE,
         MENU
     };
 
@@ -30,13 +32,15 @@ protected:
     const int MAME_COUNT = 8;
 
     Sprite* _btnOK1;
-    bool _btnOK1_state = false;
     Sprite* _btnOK2;
-    bool _btnOK2_state = false;
     Sprite* _btnOK3;
-    bool _btnOK3_state = false;
     Sprite* _btnNG;
-    bool _btnNG_state = false;
+
+    SpriteBatchNode* _scoreBatchNode;
+    SpriteBatchNode* _comboBatchNode;
+
+    int _score;
+    int _combo;
 
 public:
     static Scene* createScene();
@@ -48,6 +52,10 @@ public:
     
     //初期表示
     void initDisp();
+    //スコア表示
+    void viewScore();
+    //コンボ表示
+    void viewCombo();
     //ボタン押したとき
     void ClickBtn(BtnType btn_type);
     //豆を設置するステージ

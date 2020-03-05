@@ -43,14 +43,24 @@ bool TitleLayer::init()
     );
     
     //メニューボタン
-    auto mItem1 = MenuItemImage::create("title/btn_start.png", "title/btn_start.png", [](Ref* sender) {
-        //ゲーム画面へ
-        Director::getInstance()->replaceScene(TransitionFade::create(1.0f, GameLayer::createScene(), Color3B::WHITE));
+    _mItem1 = MenuItemImage::create("title/btn_start.png", "title/btn_start.png", [=](Ref* sender) {
+        _mItem1->stopAllActions();
+        _mItem1->runAction(
+            Sequence::create(
+                EaseOut::create(ScaleTo::create(0.1f, 0.4f), 2.0f),
+                EaseElasticOut::create(ScaleTo::create(0.25f, 1.0f)),
+                CallFunc::create([]() {
+                    //ゲーム画面へ
+                    Director::getInstance()->replaceScene(TransitionFade::create(1.0f, GameLayer::createScene(), Color3B::WHITE));
+                }),
+                nullptr
+            )
+        );
     });
-    mItem1->setPosition(Vec2(winSizeCenterW, 130));
+    _mItem1->setPosition(Vec2(winSizeCenterW, 130));
 
     //メニューを作成
-    auto menu = Menu::create(mItem1, NULL);
+    auto menu = Menu::create(_mItem1, NULL);
     menu->setPosition(Point::ZERO);
     menu->setOpacity(0);
     this->addChild(menu, (int)mainZOderList::MENU);
@@ -62,15 +72,15 @@ bool TitleLayer::init()
                 MoveBy::create(0.5f, Vec2(0, 10)),
                 nullptr
             ),
-            DelayTime::create(0.3f),
+            DelayTime::create(0.25f),
             CallFunc::create([=]() {
                 //メニューボタンを動かす
                 auto ac = Sequence::create(
-                    ScaleTo::create(0.4f, 1.1f),
-                    ScaleTo::create(0.4f, 1.0f),
+                    ScaleTo::create(0.3f, 1.1f),
+                    ScaleTo::create(0.3f, 1.0f),
                     nullptr
                     );
-                mItem1->runAction(RepeatForever::create(ac));
+                _mItem1->runAction(RepeatForever::create(ac));
             }),
             nullptr
         )

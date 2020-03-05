@@ -15,6 +15,8 @@ protected:
         TITLE,
         MENU
     };
+
+    MenuItemImage* _mItem1;
 public:
     static Scene* createScene();
     virtual bool init();

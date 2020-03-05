@@ -54,3 +54,26 @@ void Mame::adjustPosition()
     // _mamePositionを元にpositionを設定する
     this->setPosition(Mame::convertToStageSpace(position));
 }
+
+int Mame::getMameScore() {
+    switch (_mameType)
+    {
+    case Mame::mameType::OK1:
+        return 100;
+        break;
+    case Mame::mameType::OK2:
+        return 100;
+        break;
+    case Mame::mameType::OK3:
+        return 100;
+        break;
+    case Mame::mameType::NG:
+        return 100;
+        break;
+    default:
+        return 0;
+        break;
+    }
+
+
+}

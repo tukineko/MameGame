@@ -1,6 +1,7 @@
 ﻿#pragma execution_character_set("utf-8")
 #include "GameLayer.h"
 #include "SimpleAudioEngine.h"
+#include <iomanip>
 
 Scene* GameLayer::createScene()
 {
@@ -17,8 +18,20 @@ bool GameLayer::init()
         return false;
     }
     
-    this->initDisp();
+    //スコア画像はBatchNodeで処理
+    _scoreBatchNode = SpriteBatchNode::create("game/number.png");
+    this->addChild(_scoreBatchNode);
 
+    //コンボ画像はBatchNodeで処理
+    _comboBatchNode = SpriteBatchNode::create("game/number_combo.png");
+    this->addChild(_comboBatchNode);
+
+    //初期化
+    _score = 0;
+    _combo = 0;
+
+    //初期表示
+    this->initDisp();
 
     this->scheduleUpdate();
     
@@ -35,6 +48,14 @@ void GameLayer::initDisp() {
     //背景
     auto bg = LayerColor::create(Color4B::WHITE, winSizeW, winSizeH);
     this->addChild(bg, (int)mainZOderList::BG);
+
+    //コンボ土台を表示
+    auto base_combo = Sprite::create("game/base_combo.png");
+    base_combo->setPosition(Vec2(winSizeCenterW - 150, winSizeCenterH + 230));
+    this->addChild(base_combo, (int)mainZOderList::COMBO);
+
+    //スコア表示
+    this->viewScore();
 
     //床
     auto floor = Sprite::create("game/floor.png");
@@ -85,6 +106,69 @@ void GameLayer::initDisp() {
 
 }
 
+void GameLayer::viewScore() {
+    //scoreの名前がついているノードをすべて削除
+    this->enumerateChildren("score", [](Node* node) -> bool {
+        auto action = RemoveSelf::create();
+        node->runAction(action);
+        return false;
+    });
+
+    //文字列に変換、10桁0で埋める
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(10) << _score;
+    std::string score = oss.str().c_str();
+    int lang = score.length();
+    int numberRect = 64;
+
+    for (int i = 0; i < lang; i++) {
+        auto number = Sprite::createWithTexture(_scoreBatchNode->getTexture(), Rect(0, 0, numberRect, numberRect));
+        number->setPosition(Vec2((winSizeCenterW + 50) + numberRect * i, winSizeH - 50));
+        char c = score[i];
+        int num = c - '0';
+        number->setTextureRect(Rect(numberRect * num, 0, numberRect, numberRect));
+        this->addChild(number, (int)mainZOderList::SCORE, "score");
+    }
+}
+
+void GameLayer::viewCombo() {
+    //comboの名前がついているノードをすべて削除
+    this->enumerateChildren("combo", [](Node* node) -> bool {
+        auto action = RemoveSelf::create();
+        node->runAction(action);
+        return false;
+    });
+    //ラベルも削除
+    this->removeChildByTag(100);
+
+    //10コンボ以下なら
+    if (_combo < 10) return;
+
+    auto combo_label = Sprite::create("game/combo.png");
+    combo_label->setPosition(Vec2(winSizeCenterW - 155, winSizeCenterH + 205));
+    this->addChild(combo_label, (int)mainZOderList::COMBO, 100);
+
+    std::string combo = std::to_string(_combo);
+    int lang = combo.length();
+    int numberRect = 64;
+
+    for (int i = 0; i < lang; i++) {
+        auto number = Sprite::createWithTexture(_comboBatchNode->getTexture(), Rect(0, 0, numberRect, numberRect));
+        number->setPosition(Vec2((winSizeCenterW - 180) + numberRect * i, winSizeCenterH + 260));
+        char c = combo[i];
+        int num = c - '0';
+        number->setTextureRect(Rect(numberRect * num, 0, numberRect, numberRect));
+        this->addChild(number, (int)mainZOderList::COMBO, "combo");
+        number->runAction(
+            Sequence::create(
+                EaseOut::create(ScaleTo::create(0.1f, 1.0f, 1.2f), 2.0f),
+                EaseElasticOut::create(ScaleTo::create(0.25f, 1.0f)),
+                nullptr
+            )
+        );
+    }
+}
+
 void GameLayer::update(float dt) {
     // 全豆に対して落下を判定する
     for (auto mame : _mames) {
@@ -98,19 +182,19 @@ void GameLayer::update(float dt) {
 bool GameLayer::onTouchBegan(cocos2d::Touch* touch, cocos2d::Event* event) {
     Vec2 location = touch->getLocation();
 
-    if (_btnOK1->getBoundingBox().containsPoint(location) && !_btnOK1_state) {
+    if (_btnOK1->getBoundingBox().containsPoint(location)) {
         this->ClickBtn(BtnType::OK1);
     }
 
-    if (_btnOK2->getBoundingBox().containsPoint(location) && !_btnOK2_state) {
+    if (_btnOK2->getBoundingBox().containsPoint(location)) {
         this->ClickBtn(BtnType::OK2);
     }
 
-    if (_btnOK3->getBoundingBox().containsPoint(location) && !_btnOK3_state) {
+    if (_btnOK3->getBoundingBox().containsPoint(location)) {
         this->ClickBtn(BtnType::OK3);
     }
 
-    if (_btnNG->getBoundingBox().containsPoint(location) && !_btnNG_state) {
+    if (_btnNG->getBoundingBox().containsPoint(location)) {
         this->ClickBtn(BtnType::NG);
     }
 
@@ -119,49 +203,25 @@ bool GameLayer::onTouchBegan(cocos2d::Touch* touch, cocos2d::Event* event) {
 
 void GameLayer::ClickBtn(BtnType btn_type) {
 
-    CallFunc* func;
     Sprite* btn;
     switch (btn_type)
     {
     case GameLayer::BtnType::OK1:
         //豆の削除
         this->deleteMame(Mame::mameType::OK1);
-
-        _btnOK1_state = true;
         btn = _btnOK1;
-        func = CallFunc::create([&]() {
-            _btnOK1_state = false;
-        });
         break;
     case GameLayer::BtnType::OK2:
-        //豆の削除
         this->deleteMame(Mame::mameType::OK2);
-
-        _btnOK2_state = true;
         btn = _btnOK2;
-        func = CallFunc::create([&]() {
-            _btnOK2_state = false;
-        });
         break;
     case GameLayer::BtnType::OK3:
-        //豆の削除
         this->deleteMame(Mame::mameType::OK3);
-
-        _btnOK3_state = true;
         btn = _btnOK3;
-        func = CallFunc::create([&]() {
-            _btnOK3_state = false;
-        });
         break;
     case GameLayer::BtnType::NG:
-        //豆の削除
         this->deleteMame(Mame::mameType::NG);
-
-        _btnNG_state = true;
         btn = _btnNG;
-        func = CallFunc::create([&]() {
-            _btnNG_state = false;
-        });
         break;
     default:
         return;
@@ -171,7 +231,6 @@ void GameLayer::ClickBtn(BtnType btn_type) {
     auto ac = Sequence::create(
         EaseOut::create(ScaleTo::create(0.1f, 0.4f), 2.0f),
         EaseElasticOut::create(ScaleTo::create(0.25f, 1.0f)),
-        func,
         nullptr
         );
     btn->runAction(ac);
@@ -191,7 +250,35 @@ void GameLayer::deleteMame(Mame::mameType mame_type) {
     if (!mame) return;
 
     //豆タイプと一致していなかたら何もしない
-    if (mame->getMameType() != mame_type) return;
+    if (mame->getMameType() != mame_type) {
+        //コンボをリセット
+        _combo = 0;
+        //スコア表示を更新
+        this->viewCombo();
+        return;
+    };
+
+    //コンボ表示を更新
+    _combo++;
+    this->viewCombo();
+
+    //スコア表示を更新
+    auto point = mame->getMameScore();
+    if (100 <= _combo) {
+        point = point * 8;
+    }
+    else if ( 60 <= _combo && _combo < 100) {
+        point = point * 6;
+    }
+    else if (30 <= _combo && _combo < 60) {
+        point = point * 2;
+    }
+    else if (10 <= _combo && _combo < 30) {
+        point = point * 1.5;
+    }
+
+    _score += point;
+    this->viewScore();
 
     // 状態を消去中にする
     mame->setState(Mame::State::DISAPEARING);
