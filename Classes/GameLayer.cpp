@@ -1,5 +1,6 @@
 ﻿#pragma execution_character_set("utf-8")
 #include "GameLayer.h"
+#include "ResultLayer.h"
 #include "SimpleAudioEngine.h"
 #include <iomanip>
 
@@ -29,6 +30,8 @@ bool GameLayer::init()
     //初期化
     _score = 0;
     _combo = 0;
+    _timer = 30.0f;
+    _state = GameState::GAME;
 
     //初期表示
     this->initDisp();
@@ -53,6 +56,9 @@ void GameLayer::initDisp() {
     auto base_combo = Sprite::create("game/base_combo.png");
     base_combo->setPosition(Vec2(winSizeCenterW - 150, winSizeCenterH + 230));
     this->addChild(base_combo, (int)mainZOderList::COMBO);
+
+    //制限時間を表示
+    this->viewTimer();
 
     //スコア表示
     this->viewScore();
@@ -106,6 +112,28 @@ void GameLayer::initDisp() {
 
 }
 
+void GameLayer::viewTimer() {
+    //timerの名前がついているノードをすべて削除
+    this->enumerateChildren("timer", [](Node* node) -> bool {
+        auto action = RemoveSelf::create();
+        node->runAction(action);
+        return false;
+    });
+
+    std::string timer = StringUtils::toString((int)_timer);
+    int lang = timer.length();
+    int numberRect = 64;
+
+    for (int i = 0; i < lang; i++) {
+        auto number = Sprite::createWithTexture(_scoreBatchNode->getTexture(), Rect(0, 0, numberRect, numberRect));
+        number->setPosition(Vec2(100 + numberRect * i, winSizeH - 50));
+        char c = timer[i];
+        int num = c - '0';
+        number->setTextureRect(Rect(numberRect * num, 0, numberRect, numberRect));
+        this->addChild(number, (int)mainZOderList::SCORE, "timer");
+    }
+}
+
 void GameLayer::viewScore() {
     //scoreの名前がついているノードをすべて削除
     this->enumerateChildren("score", [](Node* node) -> bool {
@@ -139,14 +167,14 @@ void GameLayer::viewCombo() {
         return false;
     });
     //ラベルも削除
-    this->removeChildByTag(100);
+    this->removeChildByName("combo_label");
 
     //10コンボ以下なら
     if (_combo < 10) return;
 
     auto combo_label = Sprite::create("game/combo.png");
     combo_label->setPosition(Vec2(winSizeCenterW - 155, winSizeCenterH + 205));
-    this->addChild(combo_label, (int)mainZOderList::COMBO, 100);
+    this->addChild(combo_label, (int)mainZOderList::COMBO, "combo_label");
 
     std::string combo = std::to_string(_combo);
     int lang = combo.length();
@@ -170,16 +198,29 @@ void GameLayer::viewCombo() {
 }
 
 void GameLayer::update(float dt) {
-    // 全豆に対して落下を判定する
-    for (auto mame : _mames) {
-        this->fallMame(mame);
-    }
+    if (_state == GameState::GAME) {
+        //秒数を減らす
+        _timer -= dt;
+        this->viewTimer();
+        if ((int)_timer <= 0) {
+            this->viewTimeUp();
+        }
 
-    //豆のチェックと出現
-    this->checkSpawn();
+        // 全豆に対して落下を判定する
+        for (auto mame : _mames) {
+            this->fallMame(mame);
+        }
+
+        //豆のチェックと出現
+        this->checkSpawn();
+    }
 }
 
 bool GameLayer::onTouchBegan(cocos2d::Touch* touch, cocos2d::Event* event) {
+    if (_state != GameState::GAME) {
+        return false;
+    }
+    
     Vec2 location = touch->getLocation();
 
     if (_btnOK1->getBoundingBox().containsPoint(location)) {
@@ -236,6 +277,55 @@ void GameLayer::ClickBtn(BtnType btn_type) {
     btn->runAction(ac);
 }
 
+void GameLayer::viewTimeUp() {
+    //状態をタイムアップに
+    _state = GameState::TIMEUP;
+
+    auto bg = LayerColor::create(Color4B(0, 0, 0, 128), winSizeW, 240);
+    bg->setPosition(Vec2(0, winSizeCenterH - 120));
+    this->addChild(bg, (int)mainZOderList::TIMEUP, "base_timeup");
+
+    auto game_end = Sprite::create("game/timeup.png");
+    game_end->setPosition(Vec2(0, winSizeCenterH));
+    game_end->setOpacity(0);
+    this->addChild(game_end, (int)mainZOderList::TIMEUP);
+    
+    game_end->runAction(
+        Sequence::create(
+            Spawn::create(
+                EaseOut::create(MoveTo::create(0.5f, Vec2(winSizeCenterW, winSizeCenterH)), 3.0f),
+                FadeIn::create(0.5f),
+                nullptr
+            ),
+            DelayTime::create(2.0f),
+            Spawn::create(
+                EaseIn::create(MoveTo::create(0.5f, Vec2(winSizeW, winSizeCenterH)), 3.0f),
+                FadeOut::create(0.4f),
+                nullptr
+            ),
+            CallFunc::create([&]() {
+                this->removeChildByName("base_timeup");
+                this->viewResult();
+            }),
+            RemoveSelf::create(),
+            nullptr
+        )
+    );
+}
+
+void GameLayer::viewResult() {
+    //状態をタイムアップに
+    _state = GameState::RESULT;
+
+    //スコアを保存
+    UserDefault* _userDef = UserDefault::getInstance();
+    _userDef->setIntegerForKey("score", _score);
+
+    //リザルト画面へ
+    Director::getInstance()->replaceScene(TransitionFade::create(1.0f, ResultLayer::createScene(), Color3B::WHITE));
+
+}
+
 Mame* GameLayer::getMameAt(const Vec2& position) {
     for (auto& mame : _mames) {
         if (position.equals(mame->getMamePosition())) {
@@ -253,7 +343,7 @@ void GameLayer::deleteMame(Mame::mameType mame_type) {
     if (mame->getMameType() != mame_type) {
         //コンボをリセット
         _combo = 0;
-        //スコア表示を更新
+        //コンボ表示を更新
         this->viewCombo();
         return;
     };
@@ -263,20 +353,7 @@ void GameLayer::deleteMame(Mame::mameType mame_type) {
     this->viewCombo();
 
     //スコア表示を更新
-    auto point = mame->getMameScore();
-    if (100 <= _combo) {
-        point = point * 8;
-    }
-    else if ( 60 <= _combo && _combo < 100) {
-        point = point * 6;
-    }
-    else if (30 <= _combo && _combo < 60) {
-        point = point * 2;
-    }
-    else if (10 <= _combo && _combo < 30) {
-        point = point * 1.5;
-    }
-
+    auto point = this->calcScore(mame->getMameScore());
     _score += point;
     this->viewScore();
 
@@ -375,4 +452,22 @@ Vector<Mame*> GameLayer::checkSpawn()
         mame->adjustPosition();
     }
     return std::move(mames);
+}
+
+int GameLayer::calcScore(int point) {
+    if (100 <= _combo) {
+        return point * 8;
+    }
+    else if (60 <= _combo && _combo < 100) {
+        return point * 6;
+    }
+    else if (30 <= _combo && _combo < 60) {
+        return point * 2;
+    }
+    else if (10 <= _combo && _combo < 30) {
+        return point * 1.5;
+    }
+    else {
+        return point;
+    }
 }

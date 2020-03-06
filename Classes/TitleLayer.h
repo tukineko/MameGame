@@ -16,12 +16,19 @@ protected:
         MENU
     };
 
+    Sprite* _title;
+    Sprite* _mame01;
+    Sprite* _mame02;
+    Sprite* _mame03;
+    Menu* _menu;
+
     MenuItemImage* _mItem1;
+
 public:
     static Scene* createScene();
     virtual bool init();
     CREATE_FUNC(TitleLayer);
-
+    virtual void onEnterTransitionDidFinish();
 };
 
 #endif // __TitleLayer_H__

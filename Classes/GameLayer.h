@@ -19,9 +19,12 @@ protected:
         COMBO,
         BTN,
         SCORE,
+        TIMEUP,
+        RESULT,
         MENU
     };
 
+    //ボタンの種類
     enum class BtnType {
         OK1 = 0,
         OK2,
@@ -29,6 +32,16 @@ protected:
         NG
     };
 
+    //ゲームの状態
+    enum class GameState {
+        DEFAULT = 0,
+        COUNTDOWN,
+        GAME,
+        TIMEUP,
+        RESULT,
+    };
+
+    //豆の総数
     const int MAME_COUNT = 8;
 
     Sprite* _btnOK1;
@@ -41,6 +54,10 @@ protected:
 
     int _score;
     int _combo;
+    float _timer;
+
+    //ゲーム状態を管理
+    GameState _state;
 
 public:
     static Scene* createScene();
@@ -52,16 +69,23 @@ public:
     
     //初期表示
     void initDisp();
+    //制限時間表示
+    void viewTimer();
     //スコア表示
     void viewScore();
     //コンボ表示
     void viewCombo();
+    //タイムアップ表示
+    void viewTimeUp();
+    //ゲームリザルト表示
+    void viewResult();
     //ボタン押したとき
     void ClickBtn(BtnType btn_type);
     //豆を設置するステージ
     CC_SYNTHESIZE_RETAIN(Node*, _stage, Stage);
     //豆配列を準備
     CC_SYNTHESIZE_PASS_BY_REF(MameVector, _mames, Mames);
+    
 
     /** グリッド上の特定位置にある豆を取り出します
     *   何もなかった場合はnullptrを返します
@@ -90,6 +114,9 @@ public:
      *  @return 出現した豆の一覧
      */
     Vector<Mame*> checkSpawn();
+
+    //コンボ数によってポイントの変動して値を返します
+    int calcScore(int point);
 
 };
 
