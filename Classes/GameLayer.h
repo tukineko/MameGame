@@ -21,6 +21,7 @@ protected:
         SCORE,
         TIMEUP,
         RESULT,
+        START,
         MENU
     };
 
@@ -66,6 +67,7 @@ public:
     void update(float dt);
     //タッチした時に呼び出される関数
     bool onTouchBegan(Touch* touch, Event* event);
+    virtual void onEnterTransitionDidFinish();
     
     //初期表示
     void initDisp();
@@ -75,6 +77,8 @@ public:
     void viewScore();
     //コンボ表示
     void viewCombo();
+    //ゲーム開始表示
+    void viewGameStart();
     //タイムアップ表示
     void viewTimeUp();
     //ゲームリザルト表示

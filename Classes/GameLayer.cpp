@@ -31,7 +31,7 @@ bool GameLayer::init()
     _score = 0;
     _combo = 0;
     _timer = 30.0f;
-    _state = GameState::GAME;
+    _state = GameState::DEFAULT;
 
     //初期表示
     this->initDisp();
@@ -51,6 +51,10 @@ void GameLayer::initDisp() {
     //背景
     auto bg = LayerColor::create(Color4B::WHITE, winSizeW, winSizeH);
     this->addChild(bg, (int)mainZOderList::BG);
+
+    //ゲーム開始土台
+    auto bg_start = LayerColor::create(Color4B(0, 0, 0, 128), winSizeW, winSizeH);
+    this->addChild(bg_start, (int)mainZOderList::START, "base_start");
 
     //コンボ土台を表示
     auto base_combo = Sprite::create("game/base_combo.png");
@@ -110,6 +114,68 @@ void GameLayer::initDisp() {
         mame->adjustPosition();
     }
 
+}
+
+void GameLayer::onEnterTransitionDidFinish()
+{
+    this->viewGameStart();
+}
+
+void GameLayer::viewGameStart() {
+
+    auto count3 = Sprite::create("game/3.png");
+    count3->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+    count3->setOpacity(0);
+    this->addChild(count3, (int)mainZOderList::START);
+
+    auto count2 = Sprite::create("game/2.png");
+    count2->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+    count2->setOpacity(0);
+    this->addChild(count2, (int)mainZOderList::START);
+
+    auto count1 = Sprite::create("game/1.png");
+    count1->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+    count1->setOpacity(0);
+    this->addChild(count1, (int)mainZOderList::START);
+
+    auto start = Sprite::create("game/start.png");
+    start->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+    start->setOpacity(0);
+    this->addChild(start, (int)mainZOderList::START);
+
+    auto ac = Sequence::create(
+        Spawn::create(
+            EaseOut::create(MoveBy::create(0.3f, Vec2(0, 10)), 3),
+            EaseOut::create(FadeIn::create(0.5f), 3),
+            nullptr
+        ),
+        EaseOut::create(FadeOut::create(0.1f), 3),
+        nullptr);
+
+    auto ac2 = Sequence::create(
+        FadeIn::create(0.0f),
+        Spawn::create(
+            EaseIn::create(ScaleTo::create(0.3f, 2.0f), 3),
+            EaseIn::create(FadeOut::create(0.3f), 3),
+            nullptr
+        ),
+        EaseOut::create(FadeOut::create(0.1f), 3),
+        CallFunc::create([this]() {
+            this->removeChildByName("base_start");
+            _state = GameState::GAME;
+        }),
+        nullptr);
+
+    count3->runAction(
+        Sequence::create(
+            DelayTime::create(0.5f),
+            ac,
+            TargetedAction::create(count2, Sequence::create(ac, RemoveSelf::create(), nullptr)),
+            TargetedAction::create(count1, Sequence::create(ac, RemoveSelf::create(), nullptr)),
+            TargetedAction::create(start, Sequence::create(ac2, RemoveSelf::create(), nullptr)),
+            RemoveSelf::create(),
+            nullptr)
+    );
 }
 
 void GameLayer::viewTimer() {
