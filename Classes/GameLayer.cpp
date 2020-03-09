@@ -19,6 +19,13 @@ bool GameLayer::init()
         return false;
     }
     
+    //音データのプレロード
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/countdown1.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/countdown2.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/btnOK.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/btnNG.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/timeup.mp3");
+
     //スコア画像はBatchNodeで処理
     _scoreBatchNode = SpriteBatchNode::create("game/number.png");
     this->addChild(_scoreBatchNode);
@@ -35,6 +42,9 @@ bool GameLayer::init()
 
     //初期表示
     this->initDisp();
+
+    //チュートリアル表示
+    this->viewTutorial();
 
     this->scheduleUpdate();
     
@@ -118,7 +128,7 @@ void GameLayer::initDisp() {
 
 void GameLayer::onEnterTransitionDidFinish()
 {
-    this->viewGameStart();
+    //this->viewGameStart();
 }
 
 void GameLayer::viewGameStart() {
@@ -144,15 +154,19 @@ void GameLayer::viewGameStart() {
     this->addChild(start, (int)mainZOderList::START);
 
     auto ac = Sequence::create(
+        DelayTime::create(0.1f),
         Spawn::create(
-            EaseOut::create(MoveBy::create(0.3f, Vec2(0, 10)), 3),
-            EaseOut::create(FadeIn::create(0.5f), 3),
+            EaseOut::create(MoveBy::create(0.2f, Vec2(0, 10)), 3.0f),
+            EaseOut::create(FadeIn::create(0.2f), 3.0f),
             nullptr
         ),
         EaseOut::create(FadeOut::create(0.1f), 3),
         nullptr);
 
     auto ac2 = Sequence::create(
+        CallFunc::create([]() {
+            CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/countdown2.mp3");
+        }),
         FadeIn::create(0.0f),
         Spawn::create(
             EaseIn::create(ScaleTo::create(0.3f, 2.0f), 3),
@@ -166,10 +180,16 @@ void GameLayer::viewGameStart() {
         }),
         nullptr);
 
+    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/countdown1.mp3");
+
     count3->runAction(
         Sequence::create(
-            DelayTime::create(0.5f),
-            ac,
+            Spawn::create(
+                EaseOut::create(MoveBy::create(0.2f, Vec2(0, 10)), 3.0f),
+                EaseOut::create(FadeIn::create(0.2f), 3.0f),
+                nullptr
+            ),
+            EaseOut::create(FadeOut::create(0.1f), 3),
             TargetedAction::create(count2, Sequence::create(ac, RemoveSelf::create(), nullptr)),
             TargetedAction::create(count1, Sequence::create(ac, RemoveSelf::create(), nullptr)),
             TargetedAction::create(start, Sequence::create(ac2, RemoveSelf::create(), nullptr)),
@@ -263,6 +283,51 @@ void GameLayer::viewCombo() {
     }
 }
 
+void GameLayer::viewTutorial() {
+    //ステータスをチュートリアルに設定
+    _state = GameState::TUTORIAL;
+    
+    // モーダルレイヤー作成
+    Sprite* pModalLayerSprite = Sprite::create();
+    pModalLayerSprite->setPosition(winSizeCenterW, winSizeCenterH);
+    pModalLayerSprite->setColor(Color3B::BLACK);
+    pModalLayerSprite->setOpacity(150);
+    pModalLayerSprite->setTag(-10);
+    this->addChild(pModalLayerSprite, (int)mainZOderList::TUTORIAL);
+
+    auto tutorial01 = Sprite::create("game/tutorial01.png");
+    pModalLayerSprite->addChild(tutorial01);
+
+    auto tutorial02 = Sprite::create("game/tutorial02.png");
+    tutorial02->setPosition(Vec2(0, -200));
+    pModalLayerSprite->addChild(tutorial02);
+    tutorial02->runAction(
+        RepeatForever::create(
+            Sequence::create(
+                DelayTime::create(0.4f),
+                FadeOut::create(0.2f),
+                FadeIn::create(0.2f),
+                nullptr
+            )
+        )
+    );
+    
+    auto listener = EventListenerTouchOneByOne::create();
+    // 対象のイベントが実行された後、下位のイベントを発動されなくする
+    listener->setSwallowTouches(true);
+    listener->onTouchBegan = [&](Touch* touch, Event* event)->bool {
+        Sprite* sprite = (Sprite*)this->getChildByTag(-10);
+        sprite->removeFromParent();
+        this->viewGameStart();
+        return true;
+    };
+    auto dispatcher = Director::getInstance()->getEventDispatcher();
+    // イベントリスナーの優先順位を設定(黒半透明の画像より下のものをタッチさせなくする)
+    dispatcher->addEventListenerWithSceneGraphPriority(listener, pModalLayerSprite);
+    dispatcher->setPriority(listener, -1);
+
+}
+
 void GameLayer::update(float dt) {
     if (_state == GameState::GAME) {
         //秒数を減らす
@@ -310,42 +375,85 @@ bool GameLayer::onTouchBegan(cocos2d::Touch* touch, cocos2d::Event* event) {
 
 void GameLayer::ClickBtn(BtnType btn_type) {
 
-    Sprite* btn;
     switch (btn_type)
     {
     case GameLayer::BtnType::OK1:
-        //豆の削除
-        this->deleteMame(Mame::mameType::OK1);
-        btn = _btnOK1;
+        //豆の削除とボタンアクション
+        this->ClickBtnAction(_btnOK1, this->deleteMame(Mame::mameType::OK1));
         break;
     case GameLayer::BtnType::OK2:
-        this->deleteMame(Mame::mameType::OK2);
-        btn = _btnOK2;
+        this->ClickBtnAction(_btnOK2, this->deleteMame(Mame::mameType::OK2));
         break;
     case GameLayer::BtnType::OK3:
-        this->deleteMame(Mame::mameType::OK3);
-        btn = _btnOK3;
+        this->ClickBtnAction(_btnOK3, this->deleteMame(Mame::mameType::OK3));
         break;
     case GameLayer::BtnType::NG:
-        this->deleteMame(Mame::mameType::NG);
-        btn = _btnNG;
+        this->ClickBtnAction(_btnNG, this->deleteMame(Mame::mameType::NG));
         break;
     default:
         return;
         break;
     }
+}
 
-    auto ac = Sequence::create(
-        EaseOut::create(ScaleTo::create(0.1f, 0.4f), 2.0f),
-        EaseElasticOut::create(ScaleTo::create(0.25f, 1.0f)),
-        nullptr
+void GameLayer::ClickBtnAction(Node* node, bool check) {
+    if (check) {
+        CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/btnOK.mp3");
+        node->runAction(Sequence::create(
+            EaseOut::create(ScaleTo::create(0.1f, 0.4f), 2.0f),
+            EaseElasticOut::create(ScaleTo::create(0.25f, 1.0f)),
+            nullptr
+        ));
+
+        auto sprite = Sprite::create("game/maru.png");
+        sprite->setPosition(Vec2(winSizeCenterW + 50, winSizeCenterH + 120));
+        sprite->setOpacity(0);
+        this->addChild(sprite, (int)mainZOderList::COMBO);
+        sprite->runAction(
+            Sequence::create(
+                Spawn::create(
+                    FadeIn::create(0.3f),
+                    MoveBy::create(0.3f, Vec2(0, 10)),
+                    nullptr
+                ),
+                RemoveSelf::create(),
+                nullptr
+            )
         );
-    btn->runAction(ac);
+    }
+    else {
+        CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/btnNG.mp3");
+        node->runAction(Sequence::create(
+            RotateTo::create(0.025f, 15),
+            RotateTo::create(0.025f, -15),
+            RotateTo::create(0.025f, 15),
+            RotateTo::create(0.025f, 0),
+            nullptr
+        ));
+        auto sprite = Sprite::create("game/batu.png");
+        sprite->setPosition(Vec2(winSizeCenterW + 50, winSizeCenterH + 120));
+        sprite->setOpacity(0);
+        this->addChild(sprite, (int)mainZOderList::COMBO);
+        sprite->runAction(
+            Sequence::create(
+                Spawn::create(
+                    FadeIn::create(0.3f),
+                    MoveBy::create(0.3f, Vec2(0, 10)),
+                    nullptr
+                ),
+                RemoveSelf::create(),
+                nullptr
+            )
+        );
+    }
+    
 }
 
 void GameLayer::viewTimeUp() {
     //状態をタイムアップに
     _state = GameState::TIMEUP;
+
+    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/timeup.mp3");
 
     auto bg = LayerColor::create(Color4B(0, 0, 0, 128), winSizeW, 240);
     bg->setPosition(Vec2(0, winSizeCenterH - 120));
@@ -401,9 +509,9 @@ Mame* GameLayer::getMameAt(const Vec2& position) {
     return nullptr;
 }
 
-void GameLayer::deleteMame(Mame::mameType mame_type) {
+bool GameLayer::deleteMame(Mame::mameType mame_type) {
     auto mame = this->getMameAt(Vec2(0, 0));
-    if (!mame) return;
+    if (!mame) return false;
 
     //豆タイプと一致していなかたら何もしない
     if (mame->getMameType() != mame_type) {
@@ -411,7 +519,7 @@ void GameLayer::deleteMame(Mame::mameType mame_type) {
         _combo = 0;
         //コンボ表示を更新
         this->viewCombo();
-        return;
+        return false;
     };
 
     //コンボ表示を更新
@@ -455,6 +563,7 @@ void GameLayer::deleteMame(Mame::mameType mame_type) {
             NULL));
     }
 
+    return true;
 }
 
 bool GameLayer::fallMame(Mame* mame)

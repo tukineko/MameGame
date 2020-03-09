@@ -22,7 +22,8 @@ protected:
         TIMEUP,
         RESULT,
         START,
-        MENU
+        MENU,
+        TUTORIAL
     };
 
     //ボタンの種類
@@ -36,6 +37,7 @@ protected:
     //ゲームの状態
     enum class GameState {
         DEFAULT = 0,
+        TUTORIAL,
         COUNTDOWN,
         GAME,
         TIMEUP,
@@ -83,8 +85,12 @@ public:
     void viewTimeUp();
     //ゲームリザルト表示
     void viewResult();
+    //チュートリアル表示
+    void viewTutorial();
     //ボタン押したとき
     void ClickBtn(BtnType btn_type);
+    //ボタン押したときのアクションと音
+    void ClickBtnAction(Node* node, bool check);
     //豆を設置するステージ
     CC_SYNTHESIZE_RETAIN(Node*, _stage, Stage);
     //豆配列を準備
@@ -99,7 +105,7 @@ public:
     Mame* getMameAt(const Vec2& position);
 
     //豆の削除
-    void deleteMame(Mame::mameType mame_type);
+    bool deleteMame(Mame::mameType mame_type);
 
     /** 渡された豆が落ちるかどうかを判定し、落ちる場合は落下させます
      *  @param mame チェックする豆

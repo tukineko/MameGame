@@ -21,6 +21,9 @@ bool ResultLayer::init()
     }
     CCLOG("----------------ResultLayer::init()----------------");
 
+    //音データのプレロード
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/result.mp3");
+
     //スコア画像はBatchNodeで処理
     _scoreBatchNode = SpriteBatchNode::create("game/number.png");
     this->addChild(_scoreBatchNode);
@@ -142,6 +145,8 @@ void ResultLayer::viewScore() {
 }
 
 void ResultLayer::viewScore2() {
+    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/result.mp3");
+
     auto bg = Sprite::create("result/kira.png");
     bg->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
     this->addChild(bg, (int)mainZOderList::KIRA);

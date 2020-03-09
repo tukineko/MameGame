@@ -20,6 +20,9 @@ bool TitleLayer::init()
     }
     CCLOG("----------------TitleLayer::init()----------------");
 
+    //音データのプレロード
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/stamp.mp3");
+
     //背景
     auto bg = LayerGradient::create(Color4B(50, 150, 200, 255), Color4B(109, 195, 236, 255));
     //auto bg = LayerColor::create(Color4B(109, 195, 236, 255), winSizeW, winSizeH);
@@ -33,6 +36,10 @@ bool TitleLayer::init()
     
     //メニューボタン
     _mItem1 = MenuItemImage::create("title/btn_start.png", "title/btn_start.png", [=](Ref* sender) {
+        //SE
+        CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/stamp.mp3");
+        
+        //既存のアニメーションを停止
         _mItem1->stopAllActions();
         _mItem1->runAction(
             Sequence::create(
