@@ -23,6 +23,8 @@ bool ResultLayer::init()
 
     //音データのプレロード
     CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/result.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/chuumokunokekkaha.mp3");
+    CocosDenshion::SimpleAudioEngine::getInstance()->preloadEffect("se/score.mp3");
 
     //スコア画像はBatchNodeで処理
     _scoreBatchNode = SpriteBatchNode::create("game/number.png");
@@ -31,6 +33,11 @@ bool ResultLayer::init()
     //背景
     auto bg = LayerColor::create(Color4B::WHITE, winSizeW, winSizeH);
     this->addChild(bg, (int)mainZOderList::BG);
+
+    //結果発表
+    _kekka = Sprite::create("result/kekka.png");
+    _kekka->setPosition(Vec2(winSizeW + 500, winSizeCenterH));
+    this->addChild(_kekka, (int)mainZOderList::TEXT);
 
     //豆
     _mame = Sprite::create("result/mame.png");
@@ -44,10 +51,11 @@ bool ResultLayer::init()
     _scorebase->setOpacity(0);
     this->addChild(_scorebase, (int)mainZOderList::TEXT);
 
-    //あたなの得点は
-    _text01 = Sprite::create("result/anatano.png");
-    _text01->setPosition(Vec2(winSizeCenterW, winSizeH + 54));
-    this->addChild(_text01, (int)mainZOderList::TEXT);
+    //今回の得点は
+    _score_now = Sprite::create("result/score_now.png");
+    _score_now->setPosition(Vec2(winSizeCenterW, winSizeH - 100));
+    _score_now->setOpacity(0);
+    this->addChild(_score_now, (int)mainZOderList::TEXT);
 
     //タイトルの戻る
     _titleback = Sprite::create("result/titleback.png");
@@ -60,6 +68,27 @@ bool ResultLayer::init()
 
 void ResultLayer::onEnterTransitionDidFinish()
 {
+    this->doAnime01();
+}
+
+void ResultLayer::doAnime01() {
+    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/chuumokunokekkaha.mp3");
+
+    _kekka->runAction(
+        Sequence::create(
+            EaseOut::create(MoveTo::create(0.5f, Vec2(winSizeCenterW, winSizeCenterH)), 3.0f),
+            DelayTime::create(1.0f),
+            EaseIn::create(MoveTo::create(0.5f, Vec2(0 - 500, winSizeCenterH)), 3.0f),
+            CallFunc::create([&]() {
+               this->doAnime02();
+            }),
+            RemoveSelf::create(),
+        nullptr
+        )
+    );
+}
+
+void ResultLayer::doAnime02() {
     _mame->runAction(
         Sequence::create(
             Spawn::create(
@@ -73,7 +102,6 @@ void ResultLayer::onEnterTransitionDidFinish()
 
     _scorebase->runAction(
         Sequence::create(
-            DelayTime::create(0.8f),
             Spawn::create(
                 FadeIn::create(0.5f),
                 MoveBy::create(0.5f, Vec2(0, 10)),
@@ -83,10 +111,15 @@ void ResultLayer::onEnterTransitionDidFinish()
         )
     );
 
-    _text01->runAction(
+    _score_now->runAction(
         Sequence::create(
-            DelayTime::create(1.3f),
-            EaseOut::create(MoveTo::create(0.5f, Vec2(winSizeCenterW, winSizeH - 100)), 3.0f),
+            DelayTime::create(0.5f),
+            Spawn::create(
+                FadeIn::create(0.5f),
+                MoveBy::create(0.5f, Vec2(0, 10)),
+                nullptr
+            ),
+            DelayTime::create(1.0f),
             CallFunc::create([&]() {
                 this->viewScore();
             }),
@@ -95,10 +128,17 @@ void ResultLayer::onEnterTransitionDidFinish()
     );
 }
 
+
 void ResultLayer::viewScore() {
     UserDefault* _userDef = UserDefault::getInstance();
     auto _score = _userDef->getIntegerForKey("score");
     
+    auto hi_score = _userDef->getIntegerForKey("hi_score");
+    if (hi_score < _score) {
+        _recordNew = true;
+        _userDef->setIntegerForKey("hi_score", _score);
+    }
+
     std::string score = std::to_string(_score);
     std::reverse(score.begin(), score.end());
     int lang = score.length();
@@ -116,13 +156,17 @@ void ResultLayer::viewScore() {
         if (i == lang - 1) {
             ac = Sequence::create(
                 DelayTime::create(i * 0.5),
+                CallFunc::create([&]() {
+                    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/score.mp3");
+                }),
                 Spawn::create(
                     FadeIn::create(0.2f),
                     MoveBy::create(0.2f, Vec2(0, -10)),
                     nullptr
                 ),
+                DelayTime::create(0.5f),
                 CallFunc::create([&]() {
-                    this->viewScore2();
+                    this->doAnime03();
                 }),
                 nullptr
             );
@@ -130,6 +174,9 @@ void ResultLayer::viewScore() {
         else {
             ac = Sequence::create(
                 DelayTime::create(i * 0.5),
+                CallFunc::create([&]() {
+                    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/score.mp3");
+                }),
                 Spawn::create(
                     FadeIn::create(0.2f),
                     MoveBy::create(0.2f, Vec2(0, -10)),
@@ -144,16 +191,34 @@ void ResultLayer::viewScore() {
     }
 }
 
-void ResultLayer::viewScore2() {
+void ResultLayer::doAnime03() {
     CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("se/result.mp3");
 
-    auto bg = Sprite::create("result/kira.png");
-    bg->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
-    this->addChild(bg, (int)mainZOderList::KIRA);
-    bg->runAction(
-        RepeatForever::create(RotateBy::create(10.0f, 360.0f))
-    );
-    
+    if (_recordNew) {
+        auto base = Sprite::create("result/base.png");
+        base->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+        this->addChild(base, (int)mainZOderList::KIRA);
+
+        auto bg = Sprite::create("result/kira2.png");
+        bg->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+        this->addChild(bg, (int)mainZOderList::KIRA);
+        bg->runAction(
+            RepeatForever::create(RotateBy::create(10.0f, 360.0f))
+        );
+
+        auto newrecord = Sprite::create("result/newrecord.png");
+        newrecord->setPosition(Vec2(winSizeCenterW, winSizeCenterH + 50));
+        this->addChild(newrecord, (int)mainZOderList::TEXT);
+    }
+    else {
+        auto bg = Sprite::create("result/kira.png");
+        bg->setPosition(Vec2(winSizeCenterW, winSizeCenterH));
+        this->addChild(bg, (int)mainZOderList::KIRA);
+        bg->runAction(
+            RepeatForever::create(RotateBy::create(10.0f, 360.0f))
+        );
+    }
+
     _titleback->setVisible(true);
     _titleback->runAction(
         RepeatForever::create(

@@ -13,6 +13,7 @@ protected:
         BG = 0,
         MAME,
         TITLE,
+        SCORE,
         MENU
     };
 
@@ -21,14 +22,18 @@ protected:
     Sprite* _mame02;
     Sprite* _mame03;
     Menu* _menu;
-
     MenuItemImage* _mItem1;
+    SpriteBatchNode* _scoreBatchNode;
 
 public:
     static Scene* createScene();
     virtual bool init();
     CREATE_FUNC(TitleLayer);
     virtual void onEnterTransitionDidFinish();
+
+    void nextSceneCallback();
+    void viewAnime();
+    void viewHiScore(int score);
 };
 
 #endif // __TitleLayer_H__

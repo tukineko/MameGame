@@ -20,8 +20,11 @@ protected:
 
     Sprite* _mame;
     Sprite* _scorebase;
-    Sprite* _text01;
+    Sprite* _kekka;
+    Sprite* _score_now;
     Sprite* _titleback;
+
+    bool _recordNew = false;
 
 public:
     static Scene* createScene();
@@ -30,9 +33,13 @@ public:
     virtual void onEnterTransitionDidFinish();
     bool onTouchBegan(Touch* touch, Event* event);
 
+    void doAnime01();
+    void doAnime02();
+    void doAnime03();
+
     //スコア表示
     void viewScore();
-    void viewScore2();
+    
 };
 
 #endif // __ResultLayer_H__
